@@ -164,6 +164,17 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
+  // Clear the current buzz order WITHOUT advancing the round (re-do same question).
+  socket.on('admin:clearBuzzes', () => {
+    const me = clients.get(socket.id);
+    if (!me || me.role !== 'admin') return;
+    buzzOrder.length = 0;
+    buzzedTeams.clear();
+    buzzerLocked = true; // re-lock so nobody buzzes early on the re-do
+    io.emit('buzzesCleared');
+    broadcastState();
+  });
+
   socket.on('admin:resetScores', () => {
     const me = clients.get(socket.id);
     if (!me || me.role !== 'admin') return;

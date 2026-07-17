@@ -250,9 +250,11 @@
       </div>
       <div style="height:10px"></div>
       <div class="row">
-        <button class="btn ghost grow" id="resetRoundBtn" style="flex:1">↺ New round</button>
-        <button class="btn ghost grow" id="resetScoresBtn" style="flex:1">⚠ Reset scores</button>
+        <button class="btn ghost grow" id="clearBuzzBtn" style="flex:1">⟲ Reset round</button>
+        <button class="btn ghost grow" id="resetRoundBtn" style="flex:1">↺ Next round</button>
       </div>
+      <div style="height:10px"></div>
+      <button class="btn ghost" id="resetScoresBtn">⚠ Reset all scores</button>
     </div>
 
     <div class="card">
@@ -437,7 +439,8 @@ function updateStudentBuzzer() {
 /* ---------------- Admin ---------------- */
 $('unlockBtn').onclick = () => { socket.emit('admin:setLock', false); unlockSound(); };
 $('lockBtn').onclick   = () => { socket.emit('admin:setLock', true); lockSound(); };
-$('resetRoundBtn').onclick = () => { if (confirm('Start a new round? This clears the current buzz order.')) socket.emit('admin:resetRound'); };
+$('clearBuzzBtn').onclick = () => { if (confirm('Reset this round? Clears the buzzes so teams can buzz again for the SAME question.')) socket.emit('admin:clearBuzzes'); };
+$('resetRoundBtn').onclick = () => { if (confirm('Move to the NEXT round? This clears the buzz order and increases the round number.')) socket.emit('admin:resetRound'); };
 $('resetScoresBtn').onclick = () => { if (confirm('Reset ALL scores to zero? This cannot be undone.')) socket.emit('admin:resetScores'); };
 
 /* ---------------- Point maker ---------------- */
@@ -488,7 +491,8 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;',
 
 socket.on('state', render);
 socket.on('lockChanged', (d) => { locked = d.buzzerLocked; if (myRole==='team') updateStudentBuzzer(); });
-socket.on('roundReset', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('🔄 New round'); });
+socket.on('roundReset', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('🔄 Next round'); });
+socket.on('buzzesCleared', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('⟲ Round reset'); });
 socket.on('disconnect', () => { if (myRole==='team') $('stuStatus').textContent = 'Reconnecting…'; });
 </script>
 </body>
