@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Outlier Hunt · Buzzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05030f;
+    --neon: #00e5ff;      /* cyan */
+    --neon2: #ff2fd0;     /* magenta */
+    --neon3: #b026ff;     /* purple */
+    --lime: #b6ff3d;
+    --gold: #ffd93b; --silver: #d7e3ff; --bronze: #ff9d5c;
+    --text: #f2f4ff; --muted: #9aa0d0; --line: rgba(140,120,255,.25);
+    --glass: rgba(24,16,52,.55);
+    --disp: 'Orbitron', 'Arial Black', system-ui, sans-serif;
+    --body: 'Rubik', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--body); color: var(--text);
+    background: var(--bg); overflow-x: hidden; position: relative;
+  }
+
+  /* ---------- Animated background ---------- */
+  .bg-aurora, .bg-grid, #fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .bg-aurora {
+    background:
+      radial-gradient(45vw 45vw at 12% 8%, rgba(176,38,255,.35), transparent 60%),
+      radial-gradient(50vw 50vw at 88% 12%, rgba(0,229,255,.30), transparent 60%),
+      radial-gradient(55vw 55vw at 50% 105%, rgba(255,47,208,.30), transparent 60%);
+    filter: blur(30px); animation: drift 16s ease-in-out infinite alternate;
+  }
+  @keyframes drift {
+    0% { transform: translate3d(-3%, -2%, 0) scale(1.05); }
+    100% { transform: translate3d(3%, 3%, 0) scale(1.15); }
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(0,229,255,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,47,208,.07) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
+    animation: gridmove 12s linear infinite;
+  }
+  @keyframes gridmove { to { background-position: 46px 46px; } }
+  #fx { z-index: 1; }
+
+  .wrap { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* ---------- Title ---------- */
+  .brand { text-align: center; margin: 8px 0 20px; }
+  .brand h1 {
+    font-family: var(--disp); font-weight: 900; font-size: clamp(30px, 8vw, 52px);
+    margin: 0; letter-spacing: 2px; line-height: 1;
+    background: linear-gradient(90deg, var(--neon), var(--neon2), var(--neon3), var(--neon));
+    background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: hue 6s linear infinite; filter: drop-shadow(0 0 18px rgba(255,47,208,.5));
+  }
+  @keyframes hue { to { background-position: 300% 0; } }
+  .brand .sub { font-family: var(--disp); letter-spacing: 4px; font-size: 12px; color: var(--neon);
+    text-transform: uppercase; margin-top: 8px; text-shadow: 0 0 12px var(--neon); }
+
+  /* ---------- Cards ---------- */
+  .card {
+    position: relative; background: var(--glass); border-radius: 20px; padding: 20px;
+    margin-bottom: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .card::before {
+    content: ''; position: absolute; inset: -1px; border-radius: 20px; padding: 1px; pointer-events: none;
+    background: linear-gradient(120deg, var(--neon), transparent 30%, transparent 70%, var(--neon2));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; opacity: .7;
+  }
+  .card-title { font-family: var(--disp); font-weight: 800; letter-spacing: 1px; font-size: 14px;
+    text-transform: uppercase; color: var(--neon); margin-bottom: 14px; text-shadow: 0 0 10px rgba(0,229,255,.5); }
+
+  input {
+    width: 100%; padding: 16px 18px; font-size: 18px; font-family: var(--body); font-weight: 600;
+    border-radius: 14px; border: 1px solid var(--line); background: rgba(6,4,20,.7); color: var(--text); outline: none;
+    transition: box-shadow .2s, border-color .2s;
+  }
+  input::placeholder { color: #6b6fa0; }
+  input:focus { border-color: var(--neon); box-shadow: 0 0 0 3px rgba(0,229,255,.18), 0 0 24px rgba(0,229,255,.25); }
+
+  button { font-family: var(--body); cursor: pointer; border: none; border-radius: 14px; font-weight: 800;
+    transition: transform .06s ease, filter .15s ease, box-shadow .2s; }
+  button:active { transform: scale(.97); }
+  .btn {
+    padding: 16px 18px; font-size: 16px; color: #05030f; width: 100%; letter-spacing: .5px;
+    background: linear-gradient(90deg, var(--neon), var(--neon3));
+    box-shadow: 0 8px 24px rgba(0,229,255,.35), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .btn.green { background: linear-gradient(90deg, var(--lime), #35d07f); box-shadow: 0 8px 24px rgba(182,255,61,.35); }
+  .btn.red   { background: linear-gradient(90deg, #ff5a6a, var(--neon2)); color:#fff; box-shadow: 0 8px 24px rgba(255,47,208,.4); }
+  .btn.gold  { background: linear-gradient(90deg, var(--gold), #ff8a3d); box-shadow: 0 8px 24px rgba(255,217,59,.4); }
+  .btn.ghost { background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .grow { flex: 1; } .center { text-align: center; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .hidden { display: none !important; }
+
+  .pill { display:inline-block; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    font-family: var(--disp); letter-spacing: 1px; }
+  .pill.locked { background: rgba(255,47,208,.12); color: var(--neon2); border:1px solid rgba(255,47,208,.4); text-shadow:0 0 8px var(--neon2); }
+  .pill.open   { background: rgba(182,255,61,.12); color: var(--lime); border:1px solid rgba(182,255,61,.45); text-shadow:0 0 8px var(--lime);
+    animation: pulsePill 1s ease-in-out infinite; }
+  @keyframes pulsePill { 50% { box-shadow: 0 0 18px rgba(182,255,61,.6); } }
+
+  /* ---------- Lists ---------- */
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li {
+    display:flex; align-items:center; gap:12px; padding: 12px 14px; border-radius: 14px;
+    background: rgba(255,255,255,.04); margin-bottom: 8px; font-size: 16px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,.05);
+  }
+  .pos { width: 34px; height: 34px; border-radius: 10px; display:grid; place-items:center; font-weight:900;
+    font-family: var(--disp); background:#2a2350; flex:0 0 auto; font-size:15px; }
+  .pos.g1 { background: linear-gradient(135deg,var(--gold),#ff8a3d); color:#2a1a00; box-shadow:0 0 16px rgba(255,217,59,.6); }
+  .pos.g2 { background: linear-gradient(135deg,var(--silver),#9fb4ff); color:#10162e; }
+  .pos.g3 { background: linear-gradient(135deg,var(--bronze),#c96a2b); color:#2a1400; }
+  .score { font-family: var(--disp); font-weight: 900; font-size: 18px; color: var(--lime); text-shadow:0 0 10px rgba(182,255,61,.5); }
+  .big { font-family: var(--disp); font-size: clamp(30px,7vw,44px); font-weight: 900; letter-spacing:1px; }
+  .status { font-size: 15px; margin-top: 12px; min-height: 22px; font-weight: 600; }
+  .flash-in { animation: flashIn .5s ease; }
+  @keyframes flashIn { from { transform: translateX(-14px); opacity: 0; } to { transform:none; opacity:1; } }
+
+  /* ---------- CRAZY BUZZER ---------- */
+  .buzz-stage { position: relative; width: min(72vw, 58vh, 320px); height: min(72vw, 58vh, 320px); margin: 26px auto 48px; }
+  .buzz-ring {
+    position:absolute; inset:-18px; border-radius:50%;
+    background: conic-gradient(from 0deg, var(--neon), var(--neon2), var(--neon3), var(--lime), var(--neon));
+    filter: blur(6px); opacity:.9; animation: spin 3s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .buzz-ring.off { animation-play-state: paused; opacity:.25; filter: blur(10px) grayscale(.6); }
+  .buzzer {
+    position:absolute; inset:0; width:100%; height:100%; border-radius:50%; border:none;
+    font-family: var(--disp); font-weight:900; font-size: clamp(30px,9vw,46px); letter-spacing:2px; color:#fff;
+    background: radial-gradient(circle at 50% 32%, #ff8b9a 0%, #ff2b57 45%, #c1123f 100%);
+    box-shadow: 0 18px 0 #7a0c2a, 0 26px 60px rgba(255,43,87,.5), inset 0 6px 20px rgba(255,255,255,.5);
+    text-shadow: 0 3px 10px rgba(0,0,0,.5); cursor:pointer; transition: transform .07s, box-shadow .07s, filter .2s;
+    animation: breathe 1.4s ease-in-out infinite;
+  }
+  @keyframes breathe { 50% { filter: brightness(1.12); box-shadow: 0 18px 0 #7a0c2a, 0 26px 80px rgba(255,43,87,.8), inset 0 6px 20px rgba(255,255,255,.6); } }
+  .buzzer:active { transform: translateY(14px); box-shadow: 0 6px 0 #7a0c2a, 0 12px 28px rgba(255,43,87,.5), inset 0 6px 20px rgba(255,255,255,.5); }
+  .buzzer.locked {
+    background: radial-gradient(circle at 50% 32%, #3b3f66 0%, #23264a 60%, #171933 100%);
+    box-shadow: 0 18px 0 #0d0f22, 0 24px 50px rgba(0,0,0,.5), inset 0 6px 18px rgba(255,255,255,.08);
+    color: #6f76ad; animation: none; cursor: not-allowed;
+  }
+  .buzzer.locked::after {
+    content:''; position:absolute; inset:0; border-radius:50%; opacity:.35;
+    background: repeating-linear-gradient(45deg, transparent 0 12px, rgba(255,255,255,.06) 12px 24px);
+  }
+  .buzzer.done {
+    background: radial-gradient(circle at 50% 32%, #b6ff9a 0%, #35d07f 50%, #12a05a 100%);
+    box-shadow: 0 18px 0 #0a6b3a, 0 26px 60px rgba(53,208,127,.6), inset 0 6px 20px rgba(255,255,255,.5);
+    color:#062a16; animation: none;
+  }
+  .shock { position:absolute; inset:0; border-radius:50%; border:4px solid var(--neon); opacity:0; pointer-events:none; }
+  .shock.go { animation: shock .6s ease-out; }
+  @keyframes shock { 0% { transform: scale(.9); opacity:.9; } 100% { transform: scale(1.9); opacity:0; } }
+
+  .toast { position: fixed; left:50%; bottom: 26px; transform: translateX(-50%) translateY(20px); z-index: 20;
+    background: linear-gradient(90deg, var(--neon3), var(--neon2)); color:#fff; padding:12px 20px; border-radius: 14px;
+    font-weight:800; font-family: var(--disp); letter-spacing:.5px; opacity:0; transition: opacity .2s, transform .2s;
+    box-shadow: 0 10px 30px rgba(255,47,208,.5); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  select { width:100%; padding: 14px; border-radius: 12px; background: rgba(6,4,20,.7); color:var(--text);
+    border:1px solid var(--line); font-size:16px; font-weight:700; font-family: var(--body); }
+  .screen-flash { position: fixed; inset:0; z-index: 15; pointer-events:none; opacity:0; background: #fff; }
+  .screen-flash.go { animation: sflash .35s ease-out; }
+  @keyframes sflash { 0% { opacity:.5; } 100% { opacity:0; } }
+  .mute-btn { position: fixed; top: 12px; right: 12px; z-index: 20; width: 42px; height: 42px; border-radius: 12px;
+    background: var(--glass); border:1px solid var(--line); color: var(--text); font-size: 18px; backdrop-filter: blur(10px); }
+
+  /* ---------- Small phones ---------- */
+  @media (max-width: 400px) {
+    .wrap { padding: 16px 12px 48px; }
+    .card { padding: 16px; border-radius: 16px; }
+    .brand { margin: 4px 0 14px; }
+    .row { gap: 8px; }
+    .btn { padding: 14px 12px; font-size: 15px; }
+    .buzz-stage { margin: 22px auto 40px; }
+  }
+  /* Short screens (landscape phones): keep the buzzer from overflowing */
+  @media (max-height: 560px) {
+    .buzz-stage { width: min(46vh, 240px); height: min(46vh, 240px); margin: 16px auto 34px; }
+    .buzzer { box-shadow: 0 12px 0 #7a0c2a, 0 20px 40px rgba(255,43,87,.5), inset 0 6px 20px rgba(255,255,255,.5); }
+  }
+</style>
+</head>
+<body>
+  <div class="bg-aurora"></div>
+  <div class="bg-grid"></div>
+  <canvas id="fx"></canvas>
+  <div class="screen-flash" id="screenFlash"></div>
+  <button class="mute-btn" id="muteBtn" title="Sound on/off">🔊</button>
+
+<div class="wrap">
+  <div class="brand">
+    <h1>OUTLIER HUNT</h1>
+    <div class="sub">◆ Buzzer Arena ◆</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginView" class="card">
+    <div class="card-title">▶ Enter the Arena</div>
+    <input id="username" placeholder="Your team name" autocomplete="off" />
+    <div style="height:12px"></div>
+    <button class="btn" id="loginBtn">⚡ JOIN ⚡</button>
+    <div class="muted" style="margin-top:14px">Teams: type your team name. Organisers use their own login names.</div>
+    <div id="loginErr" class="status" style="color:var(--neon2)"></div>
+  </div>
+
+  <!-- ============ STUDENT ============ -->
+  <div id="studentView" class="hidden">
+    <div class="card center">
+      <div class="muted" style="font-family:var(--disp); letter-spacing:2px; text-transform:uppercase">Team</div>
+      <div class="big" id="stuName">—</div>
+      <div id="stuLock" class="pill locked">BUZZER LOCKED</div>
+      <div class="buzz-stage">
+        <div class="buzz-ring off" id="buzzRing"></div>
+        <div class="shock" id="shock"></div>
+        <button id="buzzer" class="buzzer locked">WAIT</button>
+      </div>
+      <div id="stuStatus" class="status muted"></div>
+    </div>
+  </div>
+
+  <!-- ============ ADMIN ============ -->
+  <div id="adminView" class="hidden">
+    <div class="card">
+      <div class="row" style="align-items:center; justify-content:space-between">
+        <div class="card-title" style="margin:0">🎛 Admin · Round <span id="adRound">1</span></div>
+        <div id="adLockPill" class="pill locked">LOCKED</div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="row">
+        <button class="btn green grow" id="unlockBtn" style="flex:1">🔓 UNLOCK</button>
+        <button class="btn red grow" id="lockBtn" style="flex:1">🔒 LOCK</button>
+      </div>
+      <div style="height:10px"></div>
+      <div class="row">
+        <button class="btn ghost grow" id="resetRoundBtn" style="flex:1">↺ New round</button>
+        <button class="btn ghost grow" id="resetScoresBtn" style="flex:1">⚠ Reset scores</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚡ Buzz Order — first press wins</div>
+      <ul class="list" id="adBuzzList"></ul>
+      <div id="adNoBuzz" class="muted">No buzzes yet this round.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏆 Point Table</div>
+      <ul class="list" id="adScoreList"></ul>
+    </div>
+  </div>
+
+  <!-- ============ POINT MAKER ============ -->
+  <div id="pointView" class="hidden">
+    <div class="card">
+      <div class="card-title">💯 Point Maker</div>
+      <div class="muted" style="margin-bottom:12px">+1 for word OR imposter · +2 for both.</div>
+      <select id="pmTeam"></select>
+      <div style="height:12px"></div>
+      <div class="row">
+        <button class="btn green grow" id="pm1" style="flex:1">+1 POINT</button>
+        <button class="btn gold grow" id="pm2" style="flex:1">+2 POINTS</button>
+      </div>
+      <div id="pmStatus" class="status muted"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚡ Buzz Order — who to judge</div>
+      <ul class="list" id="pmBuzzList"></ul>
+      <div id="pmNoBuzz" class="muted">No buzzes yet.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏆 Point Table</div>
+      <ul class="list" id="pmScoreList"></ul>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io({ transports: ['websocket', 'polling'] });
+let myRole = null, myName = null, locked = true, alreadyBuzzed = false;
+const $ = (id) => document.getElementById(id);
+function show(view) {
+  ['loginView','studentView','adminView','pointView'].forEach(v => $(v).classList.add('hidden'));
+  $(view).classList.remove('hidden');
+}
+let toastT;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+/* ---------------- Sound (Web Audio, no files) ---------------- */
+let soundOn = true, actx = null;
+function ac() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+$('muteBtn').onclick = () => { soundOn = !soundOn; $('muteBtn').textContent = soundOn ? '🔊' : '🔇'; if (soundOn) ac().resume(); };
+function tone(freq, dur, type, when=0, gain=0.25) {
+  if (!soundOn) return;
+  const c = ac(); const o = c.createOscillator(); const g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + when);
+  g.gain.setValueAtTime(0.0001, c.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(gain, c.currentTime + when + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + when + dur);
+  o.connect(g); g.connect(c.destination); o.start(c.currentTime + when); o.stop(c.currentTime + when + dur + 0.02);
+}
+function buzzSound() { // punchy descending "BZZT"
+  const c = ac(); if (!soundOn) return; c.resume();
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = 'square'; o.frequency.setValueAtTime(880, c.currentTime);
+  o.frequency.exponentialRampToValueAtTime(180, c.currentTime + 0.18);
+  g.gain.setValueAtTime(0.3, c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.25);
+  o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.26);
+}
+function coinSound() { tone(988, 0.09, 'square'); tone(1319, 0.12, 'square', 0.09); }
+function lockSound() { tone(300, 0.12, 'sawtooth', 0, .18); }
+function unlockSound() { tone(500, 0.1, 'triangle'); tone(750, 0.12, 'triangle', 0.1); }
+
+/* ---------------- Canvas FX: ambient particles + confetti ---------------- */
+const cv = $('fx'), cx = cv.getContext('2d');
+let W, H, particles = [], confetti = [];
+function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+resize(); addEventListener('resize', resize);
+const COLORS = ['#00e5ff','#ff2fd0','#b026ff','#b6ff3d','#ffd93b'];
+for (let i = 0; i < 34; i++) particles.push({
+  x: Math.random()*W, y: Math.random()*H, r: Math.random()*2.4+0.6,
+  vx: (Math.random()-.5)*0.25, vy: (Math.random()-.5)*0.25,
+  c: COLORS[i % COLORS.length], a: Math.random()*0.5+0.2
+});
+function burst(n=90) {
+  for (let i = 0; i < n; i++) confetti.push({
+    x: W/2, y: H*0.42, r: Math.random()*6+3,
+    vx: (Math.random()-.5)*14, vy: Math.random()*-12-4,
+    c: COLORS[(Math.random()*COLORS.length)|0], rot: Math.random()*6, vr: (Math.random()-.5)*0.4, life: 1
+  });
+}
+function loop() {
+  cx.clearRect(0,0,W,H);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0; if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    cx.globalAlpha = p.a; cx.fillStyle = p.c; cx.shadowBlur = 12; cx.shadowColor = p.c;
+    cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 7); cx.fill();
+  }
+  cx.shadowBlur = 0;
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const c = confetti[i]; c.vy += 0.4; c.x += c.vx; c.y += c.vy; c.rot += c.vr; c.life -= 0.012;
+    if (c.life <= 0 || c.y > H + 40) { confetti.splice(i, 1); continue; }
+    cx.globalAlpha = Math.max(c.life, 0); cx.fillStyle = c.c;
+    cx.save(); cx.translate(c.x, c.y); cx.rotate(c.rot);
+    cx.fillRect(-c.r/2, -c.r/2, c.r, c.r*1.6); cx.restore();
+  }
+  cx.globalAlpha = 1;
+  requestAnimationFrame(loop);
+}
+loop();
+function screenFlash() { const f = $('screenFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+
+/* ---------------- Login ---------------- */
+function doLogin() {
+  const u = $('username').value.trim();
+  if (!u) { $('loginErr').textContent = 'Please enter a name.'; return; }
+  try { ac().resume(); } catch (e) {}
+  $('loginBtn').disabled = true;
+  socket.emit('login', u, (res) => {
+    $('loginBtn').disabled = false;
+    if (!res || !res.ok) { $('loginErr').textContent = (res && res.error) || 'Login failed.'; return; }
+    myRole = res.role; myName = res.name;
+    try { sessionStorage.setItem('ohUser', u); } catch (e) {}
+    if (myRole === 'team')      { show('studentView'); $('stuName').textContent = myName; }
+    else if (myRole === 'admin') show('adminView');
+    else if (myRole === 'pointmaker') show('pointView');
+    render(res.state);
+  });
+}
+$('loginBtn').onclick = doLogin;
+$('username').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+socket.on('connect', () => {
+  let saved = null; try { saved = sessionStorage.getItem('ohUser'); } catch (e) {}
+  if (saved && !myRole) { $('username').value = saved; doLogin(); }
+});
+
+/* ---------------- Student buzzer ---------------- */
+const buzzer = $('buzzer'), buzzRing = $('buzzRing');
+function pressBuzz() {
+  if (myRole !== 'team' || locked || alreadyBuzzed) return;
+  socket.emit('buzz', (res) => {
+    if (res && res.ok) {
+      alreadyBuzzed = true;
+      buzzer.className = 'buzzer done'; buzzer.textContent = '#' + res.position;
+      $('shock').classList.remove('go'); void $('shock').offsetWidth; $('shock').classList.add('go');
+      $('stuStatus').innerHTML = res.already ? ('You buzzed · position <b>#' + res.position + '</b>')
+                                             : ('🎉 BUZZED! You are <b>#' + res.position + '</b>');
+      buzzSound(); screenFlash(); burst(res.position === 1 ? 130 : 70);
+      if (navigator.vibrate) navigator.vibrate([40, 30, 60]);
+    } else if (res && res.locked) {
+      $('stuStatus').textContent = 'Buzzer is locked.';
+    }
+  });
+}
+buzzer.addEventListener('click', pressBuzz);
+document.addEventListener('keydown', (e) => { if (e.code === 'Space' && myRole === 'team') { e.preventDefault(); pressBuzz(); } });
+
+function updateStudentBuzzer() {
+  if (locked) {
+    alreadyBuzzed = false;
+    buzzer.className = 'buzzer locked'; buzzer.textContent = 'WAIT'; buzzRing.classList.add('off');
+    $('stuLock').className = 'pill locked'; $('stuLock').textContent = 'BUZZER LOCKED';
+    $('stuStatus').textContent = 'Wait for the organiser to unlock…';
+  } else {
+    $('stuLock').className = 'pill open'; $('stuLock').textContent = 'BUZZER OPEN'; buzzRing.classList.remove('off');
+    if (alreadyBuzzed) { buzzer.className = 'buzzer done'; }
+    else { buzzer.className = 'buzzer'; buzzer.textContent = 'BUZZ!'; $('stuStatus').innerHTML = '⚡ <b>SMASH IT!</b>'; }
+  }
+}
+
+/* ---------------- Admin ---------------- */
+$('unlockBtn').onclick = () => { socket.emit('admin:setLock', false); unlockSound(); };
+$('lockBtn').onclick   = () => { socket.emit('admin:setLock', true); lockSound(); };
+$('resetRoundBtn').onclick = () => { if (confirm('Start a new round? This clears the current buzz order.')) socket.emit('admin:resetRound'); };
+$('resetScoresBtn').onclick = () => { if (confirm('Reset ALL scores to zero? This cannot be undone.')) socket.emit('admin:resetScores'); };
+
+/* ---------------- Point maker ---------------- */
+$('pm1').onclick = () => assign(1);
+$('pm2').onclick = () => assign(2);
+function assign(points) {
+  const team = $('pmTeam').value;
+  if (!team) { $('pmStatus').textContent = 'Pick a team first.'; return; }
+  socket.emit('points:assign', { team, points }, (res) => {
+    if (res && res.ok) { $('pmStatus').innerHTML = '✔ <b>+' + points + '</b> to ' + escapeHtml(team); toast('+' + points + ' → ' + team); coinSound(); burst(40); }
+    else $('pmStatus').textContent = (res && res.error) || 'Failed.';
+  });
+}
+
+/* ---------------- Rendering ---------------- */
+function posClass(i) { return i===0?'pos g1':i===1?'pos g2':i===2?'pos g3':'pos'; }
+function render(state) {
+  if (!state) return;
+  locked = state.buzzerLocked;
+  if (myRole === 'team') updateStudentBuzzer();
+  const buzzHtml = state.buzzOrder.map((b, i) =>
+    `<li class="flash-in"><span class="${posClass(i)}">${b.position}</span><span class="grow">${escapeHtml(b.team)}</span></li>`).join('');
+  if (myRole === 'admin') {
+    $('adRound').textContent = state.round;
+    $('adLockPill').className = 'pill ' + (locked ? 'locked' : 'open');
+    $('adLockPill').textContent = locked ? 'LOCKED' : 'OPEN';
+    $('adBuzzList').innerHTML = buzzHtml;
+    $('adNoBuzz').style.display = state.buzzOrder.length ? 'none' : 'block';
+    $('adScoreList').innerHTML = scoreHtml(state.scoreboard);
+  }
+  if (myRole === 'pointmaker') {
+    $('pmBuzzList').innerHTML = buzzHtml;
+    $('pmNoBuzz').style.display = state.buzzOrder.length ? 'none' : 'block';
+    $('pmScoreList').innerHTML = scoreHtml(state.scoreboard);
+    const buzzed = state.buzzOrder.map(b => b.team);
+    const all = state.scoreboard.map(s => s.team);
+    const ordered = [...buzzed, ...all.filter(t => !buzzed.includes(t))];
+    const cur = $('pmTeam').value;
+    $('pmTeam').innerHTML = ordered.map(t => `<option ${t===cur?'selected':''}>${escapeHtml(t)}</option>`).join('');
+  }
+}
+function scoreHtml(sb) {
+  if (!sb.length) return '<div class="muted">No teams yet.</div>';
+  return sb.map((s, i) =>
+    `<li><span class="${posClass(i)}">${i+1}</span><span class="grow">${escapeHtml(s.team)}</span><span class="score">${s.points}</span></li>`).join('');
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+socket.on('state', render);
+socket.on('lockChanged', (d) => { locked = d.buzzerLocked; if (myRole==='team') updateStudentBuzzer(); });
+socket.on('roundReset', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('🔄 New round'); });
+socket.on('disconnect', () => { if (myRole==='team') $('stuStatus').textContent = 'Reconnecting…'; });
+</script>
+</body>
+</html>
