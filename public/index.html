@@ -516,7 +516,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;',
 socket.on('state', render);
 socket.on('lockChanged', (d) => { locked = d.buzzerLocked; if (myRole==='team') updateStudentBuzzer(); });
 socket.on('roundReset', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('🔄 Next round'); });
-socket.on('buzzesCleared', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('⟲ Round reset'); });
+socket.on('buzzesCleared', () => { alreadyBuzzed = false; if (myRole==='team') updateStudentBuzzer(); toast('⟲ Reset to Round 1'); });
 socket.on('disconnect', () => { if (myRole==='team') $('stuStatus').textContent = 'Reconnecting…'; });
 </script>
 </body>

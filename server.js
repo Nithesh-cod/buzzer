@@ -164,14 +164,15 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  // Clear the current buzz order WITHOUT advancing the round (re-do same question).
+  // Reset the round counter back to 1 and clear the current buzzes (start over).
   socket.on('admin:clearBuzzes', () => {
     const me = clients.get(socket.id);
     if (!me || me.role !== 'admin') return;
     buzzOrder.length = 0;
     buzzedTeams.clear();
-    buzzerLocked = true; // re-lock so nobody buzzes early on the re-do
-    io.emit('buzzesCleared');
+    buzzerLocked = true; // re-lock so nobody buzzes early
+    round = 1;
+    io.emit('buzzesCleared', { round });
     broadcastState();
   });
 
