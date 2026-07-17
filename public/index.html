@@ -45,10 +45,9 @@
       linear-gradient(rgba(0,229,255,.07) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,47,208,.07) 1px, transparent 1px);
     background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
     mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
-    animation: gridmove 12s linear infinite;
   }
-  @keyframes gridmove { to { background-position: 46px 46px; } }
   #fx { z-index: 1; }
 
   .wrap { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; padding: 20px 16px 60px; }
@@ -68,9 +67,8 @@
 
   /* ---------- Cards ---------- */
   .card {
-    position: relative; background: var(--glass); border-radius: 20px; padding: 20px;
-    margin-bottom: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--line);
+    position: relative; background: rgba(18,12,38,.82); border-radius: 20px; padding: 20px;
+    margin-bottom: 16px; border: 1px solid var(--line);
     box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
   }
   .card::before {
@@ -180,7 +178,7 @@
   .screen-flash.go { animation: sflash .35s ease-out; }
   @keyframes sflash { 0% { opacity:.5; } 100% { opacity:0; } }
   .mute-btn { position: fixed; top: 12px; right: 12px; z-index: 20; width: 42px; height: 42px; border-radius: 12px;
-    background: var(--glass); border:1px solid var(--line); color: var(--text); font-size: 18px; backdrop-filter: blur(10px); }
+    background: rgba(18,12,38,.85); border:1px solid var(--line); color: var(--text); font-size: 18px; }
 
   /* ---------- Small phones ---------- */
   @media (max-width: 400px) {
@@ -195,6 +193,11 @@
   @media (max-height: 560px) {
     .buzz-stage { width: min(46vh, 240px); height: min(46vh, 240px); margin: 16px auto 34px; }
     .buzzer { box-shadow: 0 12px 0 #7a0c2a, 0 20px 40px rgba(255,43,87,.5), inset 0 6px 20px rgba(255,255,255,.5); }
+  }
+  /* Respect users who ask for less motion (also saves CPU on low-end phones) */
+  @media (prefers-reduced-motion: reduce) {
+    .bg-aurora, .brand h1, .buzzer, .buzz-ring, .pill.open { animation: none !important; }
+    .buzz-ring { opacity: .5; }
   }
 </style>
 </head>
@@ -338,44 +341,65 @@ function coinSound() { tone(988, 0.09, 'square'); tone(1319, 0.12, 'square', 0.0
 function lockSound() { tone(300, 0.12, 'sawtooth', 0, .18); }
 function unlockSound() { tone(500, 0.1, 'triangle'); tone(750, 0.12, 'triangle', 0.1); }
 
-/* ---------------- Canvas FX: ambient particles + confetti ---------------- */
+/* ---------------- Canvas FX: ambient particles + confetti (perf-optimised) ----------------
+   - No canvas shadowBlur (very slow on mobile): glow is pre-rendered into small sprites once.
+   - Fewer particles; skipped entirely for prefers-reduced-motion.
+   - Loop pauses when the tab is hidden and self-stops when nothing is animating. */
 const cv = $('fx'), cx = cv.getContext('2d');
-let W, H, particles = [], confetti = [];
+const COLORS = ['#00e5ff','#ff2fd0','#b026ff','#b6ff3d','#ffd93b'];
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W, H, confetti = [];
 function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
 resize(); addEventListener('resize', resize);
-const COLORS = ['#00e5ff','#ff2fd0','#b026ff','#b6ff3d','#ffd93b'];
-for (let i = 0; i < 34; i++) particles.push({
-  x: Math.random()*W, y: Math.random()*H, r: Math.random()*2.4+0.6,
-  vx: (Math.random()-.5)*0.25, vy: (Math.random()-.5)*0.25,
-  c: COLORS[i % COLORS.length], a: Math.random()*0.5+0.2
+
+// Pre-render soft glow sprites (drawImage is far cheaper than per-frame shadowBlur).
+const glow = {};
+for (const c of COLORS) {
+  const s = document.createElement('canvas'); s.width = s.height = 20;
+  const g = s.getContext('2d'); const rad = g.createRadialGradient(10,10,0,10,10,10);
+  rad.addColorStop(0, c); rad.addColorStop(0.35, c); rad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rad; g.beginPath(); g.arc(10,10,10,0,7); g.fill(); glow[c] = s;
+}
+const particles = [];
+if (!reduceMotion) for (let i = 0; i < 18; i++) particles.push({
+  x: Math.random()*W, y: Math.random()*H, sz: Math.random()*10+6,
+  vx: (Math.random()-.5)*0.2, vy: (Math.random()-.5)*0.2,
+  c: COLORS[i % COLORS.length], a: Math.random()*0.4+0.15
 });
-function burst(n=90) {
+
+let running = false;
+function start() { if (!running && !document.hidden) { running = true; requestAnimationFrame(loop); } }
+function burst(n=48) {
+  n = Math.min(n, 60);
   for (let i = 0; i < n; i++) confetti.push({
     x: W/2, y: H*0.42, r: Math.random()*6+3,
-    vx: (Math.random()-.5)*14, vy: Math.random()*-12-4,
+    vx: (Math.random()-.5)*13, vy: Math.random()*-12-4,
     c: COLORS[(Math.random()*COLORS.length)|0], rot: Math.random()*6, vr: (Math.random()-.5)*0.4, life: 1
   });
+  start();
 }
 function loop() {
   cx.clearRect(0,0,W,H);
   for (const p of particles) {
     p.x += p.vx; p.y += p.vy;
-    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0; if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-    cx.globalAlpha = p.a; cx.fillStyle = p.c; cx.shadowBlur = 12; cx.shadowColor = p.c;
-    cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 7); cx.fill();
+    if (p.x < -20) p.x = W+20; else if (p.x > W+20) p.x = -20;
+    if (p.y < -20) p.y = H+20; else if (p.y > H+20) p.y = -20;
+    cx.globalAlpha = p.a; cx.drawImage(glow[p.c], p.x - p.sz/2, p.y - p.sz/2, p.sz, p.sz);
   }
-  cx.shadowBlur = 0;
   for (let i = confetti.length - 1; i >= 0; i--) {
-    const c = confetti[i]; c.vy += 0.4; c.x += c.vx; c.y += c.vy; c.rot += c.vr; c.life -= 0.012;
+    const c = confetti[i]; c.vy += 0.4; c.x += c.vx; c.y += c.vy; c.rot += c.vr; c.life -= 0.014;
     if (c.life <= 0 || c.y > H + 40) { confetti.splice(i, 1); continue; }
     cx.globalAlpha = Math.max(c.life, 0); cx.fillStyle = c.c;
     cx.save(); cx.translate(c.x, c.y); cx.rotate(c.rot);
     cx.fillRect(-c.r/2, -c.r/2, c.r, c.r*1.6); cx.restore();
   }
   cx.globalAlpha = 1;
-  requestAnimationFrame(loop);
+  // Keep running only while there is something to animate (and the tab is visible).
+  if ((particles.length || confetti.length) && !document.hidden) requestAnimationFrame(loop);
+  else { running = false; cx.clearRect(0,0,W,H); }
 }
-loop();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) start(); });
+start();
 function screenFlash() { const f = $('screenFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
 
 /* ---------------- Login ---------------- */
@@ -439,8 +463,8 @@ function updateStudentBuzzer() {
 /* ---------------- Admin ---------------- */
 $('unlockBtn').onclick = () => { socket.emit('admin:setLock', false); unlockSound(); };
 $('lockBtn').onclick   = () => { socket.emit('admin:setLock', true); lockSound(); };
-$('clearBuzzBtn').onclick = () => { if (confirm('Reset this round? Clears the buzzes so teams can buzz again for the SAME question.')) socket.emit('admin:clearBuzzes'); };
-$('resetRoundBtn').onclick = () => { if (confirm('Move to the NEXT round? This clears the buzz order and increases the round number.')) socket.emit('admin:resetRound'); };
+$('clearBuzzBtn').onclick = () => { socket.emit('admin:clearBuzzes'); lockSound(); };
+$('resetRoundBtn').onclick = () => { socket.emit('admin:resetRound'); lockSound(); };
 $('resetScoresBtn').onclick = () => { if (confirm('Reset ALL scores to zero? This cannot be undone.')) socket.emit('admin:resetScores'); };
 
 /* ---------------- Point maker ---------------- */
